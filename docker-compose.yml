@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: learnflow-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./learnflow.db
+      - LLM_PROVIDER=fallback
+      - EMBEDDING_PROVIDER=tfidf_cosine
+      - JWT_SECRET=learnflow-hackathon-2026-super-secret-key-321
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/learnflow.db:/app/learnflow.db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: learnflow-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
