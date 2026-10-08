@@ -1,184 +1,862 @@
-# LearnFlow AI — Adaptive Multi-Agent Personal Tutor
+# LearnFlow AI
+## Adaptive Multi-Agent Personal Tutor & Personalized Learning Platform
 
-[![Multimodal AI Hackathon 2026](https://img.shields.io/badge/Hackathon-Track%20D%3A%20Personalized%20Tutoring-indigo)](https://github.com)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/Frontend-React%20%2B%20TypeScript%20%2B%20Vite-61DAFB.svg)](https://react.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38B2AC.svg)](https://tailwindcss.com/)
-[![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph%20Multi--Agent-orange)](https://github.com/langchain-ai/langgraph)
+LearnFlow AI is an AI-powered adaptive learning platform that transforms multimodal course material such as PDFs, PPTX presentations, and lecture recordings into a structured, source-grounded learning environment.
 
-**LearnFlow AI** is a complete, working, demo-ready web application built for the **Multimodal AI Hackathon 2026, Track D: "Personalized Tutoring & Adaptive Learning"**.
-
-It transforms scattered course material (PDF textbooks, PPTX slide decks, lecture video recordings) into an intelligent source-grounded knowledge base, powered by **8 logical AI agents** orchestrated through a unified **LangGraph** feedback loop.
+It uses an **8-agent LangGraph architecture** to provide grounded tutoring, adaptive assessments, misconception diagnosis, real-time learner modeling, and personalized next-best learning actions.
 
 ---
 
-## 🚀 The Core Learning Loop
+# 1. Key Features
 
+| Domain | Implemented Features |
+|---|---|
+| **Authentication & Security** | JWT-based authentication |
+| | Secure password hashing using PBKDF2/Bcrypt |
+| | Input validation and sanitized database queries |
+| | Protected API endpoints |
+| | No API keys exposed to frontend |
+| **Multimodal Learning Material** | PDF textbook ingestion |
+| | PPTX slide ingestion |
+| | Lecture video transcript ingestion |
+| | Exact source metadata preservation |
+| | Page, slide, and video timestamp references |
+| **AI Knowledge Organization** | Automatic topic extraction |
+| | Subtopic and concept organization |
+| | Prerequisite dependency graph |
+| | Interactive knowledge map |
+| **Grounded AI Tutor** | RAG-based question answering |
+| | Strict source grounding |
+| | Clickable source citations |
+| | Source Viewer Modal |
+| | Out-of-domain query refusal |
+| | Hallucination-resistant responses |
+| **Adaptive Assessment** | MCQ generation |
+| | Problem-solving question generation |
+| | Conceptual question generation |
+| | Easy / Medium / Hard difficulty levels |
+| | Mastery-aware question selection |
+| **Question Verification** | Single-answer validation |
+| | Question clarity verification |
+| | Pedagogical quality checks |
+| | Source alignment verification |
+| | Automatic Reject → Regenerate workflow |
+| **Misconception Analysis** | Incorrect-answer analysis |
+| | Root conceptual misunderstanding detection |
+| | Concept-level remediation |
+| | Personalized feedback |
+| **Learner Modeling** | Real-time topic mastery tracking |
+| | Difficulty calibration |
+| | Mistake penalties |
+| | Mastery score range: 0.05–0.99 |
+| | Learner analytics |
+| **Personalization** | Next Best Action recommendations |
+| | Foundational review recommendations |
+| | Intermediate practice recommendations |
+| | Challenge quiz recommendations |
+| | Explicit pedagogical "WHY" explanations |
+| **Evaluation & Benchmarking** | RAG benchmark suite |
+| | Faithfulness evaluation |
+| | Relevancy evaluation |
+| | Citation precision evaluation |
+| | Refusal reliability evaluation |
+| | Automated agent testing |
+
+---
+
+# 2. Architecture Overview
+
+## System Data Flow
+
+```text
+PDF / PPTX / VIDEO
+        │
+        ▼
+┌─────────────────────────────┐
+│ Agent 1                     │
+│ Multimodal Ingestion        │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ Agent 2                     │
+│ Knowledge Organization      │
+└──────────────┬──────────────┘
+               ▼
+      Knowledge Base
+               │
+               ▼
+┌─────────────────────────────┐
+│ Agent 3                     │
+│ Grounded AI Tutor / RAG     │
+└──────────────┬──────────────┘
+               │
+               ▼
+        Student Interaction
+               │
+               ▼
+┌─────────────────────────────┐
+│ Agent 4                     │
+│ Assessment Generation       │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ Agent 5                     │
+│ Question Verification       │
+└──────────────┬──────────────┘
+               │
+        Reject → Regenerate
+               │
+               ▼
+        Student Answer
+               │
+               ▼
+┌─────────────────────────────┐
+│ Agent 6                     │
+│ Misconception Analysis      │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ Agent 7                     │
+│ Learner Model               │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ Agent 8                     │
+│ Personalization             │
+└──────────────┬──────────────┘
+               │
+               ▼
+       Next Best Action
+               │
+               └──────────► Repeat & Master
 ```
-  ┌─────────────────────────────────────────────────────────┐
-  │                      LEARNFLOW AI                       │
-  │                                                         │
-  │   Ingest Multimodal Course Material (PDF / PPT / Video) │
-  └────────────────────────────┬────────────────────────────┘
-                               │
-                               ▼
-  ┌─────────────────────────────────────────────────────────┐
-  │ 1. Multimodal Ingestion Agent & Knowledge Organizer     │
-  │    • Preserves exact PDF pages, slide #s, timestamps    │
-  │    • Builds topic & prerequisite dependency graph       │
-  └────────────────────────────┬────────────────────────────┘
-                               │
-                               ▼
-  ┌─────────────────────────────────────────────────────────┐
-  │ 2. Grounded AI Tutor Agent (RAG + Clickable Citations)  │
-  │    • Strict source grounding with verification checks   │
-  │    • Refusal integrity on out-of-domain queries         │
-  └────────────────────────────┬────────────────────────────┘
-                               │
-                               ▼
-  ┌─────────────────────────────────────────────────────────┐
-  │ 3. Adaptive Assessment & Question Verification Pipeline │
-  │    • Agent 4: Generates MCQ / Problems by Mastery       │
-  │    • Agent 5: Verifies clarity & single-answer validity │
-  └────────────────────────────┬────────────────────────────┘
-                               │
-                               ▼
-  ┌─────────────────────────────────────────────────────────┐
-  │ 4. Misconception Diagnosis & Learner Modeling           │
-  │    • Agent 6: Pinpoints exact conceptual flaw           │
-  │    • Agent 7: Transparent Bayesian/EMA mastery update   │
-  └────────────────────────────┬────────────────────────────┘
-                               │
-                               ▼
-  ┌─────────────────────────────────────────────────────────┐
-  │ 5. Personalization Agent (Next Best Actions)            │
-  │    • Actionable recommendations with pedagogical "WHY"  │
-  └────────────────────────────┬────────────────────────────┘
-                               │
-                               ▼
-                      Repeat & Master ↺
+
+## Adaptive Learning Loop
+
+```text
+Learn
+  ↓
+Practice
+  ↓
+Answer
+  ↓
+Diagnose
+  ↓
+Update Mastery
+  ↓
+Personalize
+  ↓
+Learn Again
 ```
 
 ---
 
-## 🧠 The 8 Logical AI Agents
+# 3. The 8 AI Agents
 
-| Agent | Name | Responsibility |
-|---|---|---|
-| **Agent 1** | **Multimodal Ingestion Agent** | Extracts text from PDFs, PPTX slides, and video transcripts, preserving exact source metadata (`source_name`, `page_number`, `slide_number`, `video_timestamp`). |
-| **Agent 2** | **Knowledge Organization Agent** | Structures unstructured material into Topics, Subtopics, Concepts, and Prerequisite dependency graphs. |
-| **Agent 3** | **Grounded Tutor Agent** | RAG retrieval engine with strict source grounding, clickable citations `[Textbook.pdf — Page 42]`, and refusal on out-of-domain queries. |
-| **Agent 4** | **Assessment Generation Agent** | Generates calibrated MCQs, problem-solving, and conceptual questions across Easy, Medium, and Hard difficulty bands. |
-| **Agent 5** | **Question Verification Agent** | Validates generated questions for single-answer correctness, pedagogical clarity, and source alignment before presenting to the learner (Reject $\rightarrow$ Regenerate loop). |
-| **Agent 6** | **Misconception Analysis Agent** | Analyzes incorrect student attempts against course concepts to diagnose the root conceptual misunderstanding. |
-| **Agent 7** | **Learner Model Agent** | Calculates real-time topic mastery scores ($0.05 \le M \le 0.99$) with difficulty calibration and mistake penalties. |
-| **Agent 8** | **Personalization Agent** | Generates targeted Next Best Actions (foundational reviews, intermediate practice, challenge quizzes) with explicit pedagogical rationales. |
+### Agent 1 — Multimodal Ingestion Agent
+
+Processes:
+
+- PDF textbooks
+- PPTX presentations
+- Lecture video transcripts
+
+Preserves exact source metadata including:
+
+- source name
+- page number
+- slide number
+- video timestamp
+
+### Agent 2 — Knowledge Organization Agent
+
+Converts unstructured learning material into:
+
+```text
+Course
+ └── Topic
+      └── Subtopic
+           └── Concept
+                └── Prerequisites
+```
+
+It also builds the prerequisite dependency graph used by the tutor and personalization system.
+
+### Agent 3 — Grounded Tutor Agent
+
+Provides source-grounded answers using RAG.
+
+Features include:
+
+- Semantic retrieval
+- Source verification
+- Clickable citations
+- Source Viewer
+- Out-of-domain refusal
+
+Example:
+
+```text
+[Algorithms_Textbook.pdf — Page 42]
+[Lecture_03_Searching.mp4 — 14:22]
+```
+
+### Agent 4 — Assessment Generation Agent
+
+Generates:
+
+- MCQs
+- Programming/problem-solving questions
+- Conceptual questions
+
+Questions are calibrated according to:
+
+- Topic
+- Learner mastery
+- Difficulty
+- Previous performance
+
+### Agent 5 — Question Verification Agent
+
+Before a question reaches the learner, the agent verifies:
+
+- Single correct answer
+- Clarity
+- Source alignment
+- Pedagogical quality
+
+Invalid questions enter:
+
+```text
+Reject → Regenerate → Verify → Present
+```
+
+### Agent 6 — Misconception Analysis Agent
+
+Analyzes incorrect answers and identifies the underlying conceptual mistake.
+
+Instead of simply saying:
+
+> "Wrong answer."
+
+It identifies the likely misconception and provides targeted remediation.
+
+### Agent 7 — Learner Model Agent
+
+Maintains a real-time learner mastery model.
+
+Mastery scores are maintained between:
+
+```text
+0.05 ≤ Mastery ≤ 0.99
+```
+
+The model considers:
+
+- Previous performance
+- Question difficulty
+- Mistakes
+- Topic-level understanding
+
+### Agent 8 — Personalization Agent
+
+Uses the learner model to generate **Next Best Actions**.
+
+Possible recommendations:
+
+```text
+Foundational Review
+        ↓
+Intermediate Practice
+        ↓
+Challenge Quiz
+```
+
+Each recommendation includes a pedagogical explanation of **WHY** it was selected.
 
 ---
 
-## 🛠️ Technology Stack
+# 4. Technology Stack
 
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS v4, Lucide Icons, Recharts, React Router v6, Axios
-- **Backend**: Python 3.11+, FastAPI, SQLAlchemy, Pydantic v2, Python-Jose (JWT), Passlib
-- **Orchestration**: LangGraph StateGraph pipeline
-- **Vector Search & RAG**: Cosine Similarity Vector Store with TF-IDF / Subword embeddings, with native support for OpenAI Embeddings and Ollama
-- **Database**: SQLite (zero setup friction default) or PostgreSQL with pgvector
-- **Containerization**: Docker, Docker Compose
+## Frontend
 
----
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS v4
+- Lucide Icons
+- Recharts
+- React Router v6
+- Axios
 
-## ⚡ Quick Start (Local Setup)
+## Backend
 
-### 1. Prerequisites
 - Python 3.11+
-- Node.js v18+ and npm
+- FastAPI
+- SQLAlchemy
+- Pydantic v2
+- Python-Jose
+- Passlib
 
-### 2. Backend Setup
+## AI / ML
+
+- LangGraph
+- Multi-Agent StateGraph
+- RAG
+- TF-IDF / Subword embeddings
+- Cosine Similarity Vector Search
+- OpenAI Embeddings support
+- Ollama support
+
+## Database
+
+- SQLite — default zero-setup database
+- PostgreSQL
+- pgvector
+
+## Deployment
+
+- Docker
+- Docker Compose
+
+---
+
+# 5. Folder Structure
+
+```text
+learnflow-ai/
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── database/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── api/
+│   │   ├── services/
+│   │   ├── agents/
+│   │   │   ├── ingestion_agent.py
+│   │   │   ├── knowledge_agent.py
+│   │   │   ├── tutor_agent.py
+│   │   │   ├── assessment_agent.py
+│   │   │   ├── verification_agent.py
+│   │   │   ├── misconception_agent.py
+│   │   │   ├── learner_model_agent.py
+│   │   │   └── personalization_agent.py
+│   │   └── graph/
+│   │       └── learning_graph.py
+│   │
+│   ├── tests/
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── hooks/
+│   │   ├── utils/
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   │
+│   ├── package.json
+│   └── Dockerfile
+│
+├── docker-compose.yml
+├── start.ps1
+└── README.md
+```
+
+---
+
+# 6. Database Structure
+
+## 1. Users
+
+Stores learner authentication and profile information.
+
+```text
+id
+email
+password_hash
+name
+created_at
+last_login
+```
+
+## 2. Courses
+
+Stores course information.
+
+```text
+id
+name
+description
+created_at
+```
+
+## 3. Learning Materials
+
+Stores uploaded and indexed learning content.
+
+```text
+id
+course_id
+source_name
+source_type
+page_number
+slide_number
+video_timestamp
+content
+embedding
+```
+
+## 4. Topics
+
+Stores the structured knowledge hierarchy.
+
+```text
+id
+course_id
+topic_name
+subtopic_name
+concept_name
+prerequisites
+```
+
+## 5. Questions
+
+Stores generated and verified assessments.
+
+```text
+id
+topic_id
+question
+question_type
+difficulty
+options
+correct_answer
+source_reference
+verification_status
+```
+
+## 6. Learner Progress
+
+Stores learner mastery information.
+
+```text
+id
+user_id
+topic_id
+mastery_score
+attempts
+correct_answers
+incorrect_answers
+updated_at
+```
+
+## 7. Misconceptions
+
+Stores diagnosed conceptual misunderstandings.
+
+```text
+id
+user_id
+topic_id
+question_id
+misconception
+diagnosis
+remediation
+created_at
+```
+
+## 8. Recommendations
+
+Stores personalized Next Best Actions.
+
+```text
+id
+user_id
+topic_id
+action_type
+recommendation
+reason
+created_at
+```
+
+---
+
+# 7. Installation Guide
+
+## Prerequisites
+
+- Python 3.11+
+- Node.js 18+
+- npm
+- Optional PostgreSQL + pgvector
+- Optional Ollama
+
+## Backend Setup
+
 ```bash
-# Navigate to backend directory
 cd backend
 
-# Install Python requirements
 pip install -r requirements.txt
 
-# Initialize & Seed the Data Structures course database
 python -m app.database.init_db
 
-# Run the FastAPI server
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --reload
 ```
-API Documentation will be live at: **http://localhost:8000/docs**
 
-### 3. Frontend Setup
+FastAPI documentation:
+
+```text
+http://localhost:8000/docs
+```
+
+## Frontend Setup
+
 ```bash
-# Navigate to frontend directory in a new terminal
 cd frontend
 
-# Install dependencies (if not already installed)
 npm install
 
-# Start development server
 npm run dev
 ```
-Web Application will be live at: **http://localhost:5173**
 
-### 4. Or Run Both with One Command (Windows PowerShell)
+Frontend:
+
+```text
+http://localhost:5173
+```
+
+## One-Command Windows Setup
+
 ```powershell
 .\start.ps1
 ```
 
 ---
 
-## 👤 Demo Credentials
+# 8. Demo Credentials
 
-- **Email**: `demo@learnflow.ai`
-- **Password**: `demo1234`
-- Or simply click **"Quick Demo Login"** on the landing page!
+```text
+Email: demo@learnflow.ai
+Password: demo1234
+```
+
+The application also provides a **Quick Demo Login** option.
 
 ---
 
-## 🧪 Running Automated Tests & Benchmarks
+# 9. Testing & Evaluation
 
-### 1. Run Unit & Agent Tests
+LearnFlow AI includes automated tests covering:
+
+- RAG retrieval
+- Out-of-domain refusal
+- Question generation
+- Question verification
+- Misconception diagnosis
+- Learner mastery updates
+
+Run tests with:
+
 ```bash
 cd backend
 python -m pytest tests/
 ```
-All 11 unit tests verify RAG retrieval, out-of-domain refusal, question generation, Agent 5 verification, misconception diagnosis, and learner mastery updates.
 
-### 2. Run Built-in RAG Benchmark Suite
-Navigate to **Evaluation & Benchmarks** in the UI (`/evaluation`) or trigger via API:
+The project also includes an evaluation dashboard for measuring:
+
+- Faithfulness
+- Relevancy
+- Citation Precision
+- Refusal Reliability
+
+Evaluation can be triggered through:
+
 ```bash
 curl -X POST http://localhost:8000/api/evaluation/run
 ```
 
 ---
 
-## 🎯 End-to-End Hackathon Demo Flow
+# 10. User Learning Flow
 
-1. **Login**: Click *Quick Demo Login* to enter as student *Alex Chen*.
-2. **Dashboard**: View overall course mastery (65%), active course *Data Structures & Algorithms*, and personalized Next Best Actions.
-3. **Materials Ingestion**: Inspect pre-indexed textbook PDFs, slide decks, and lecture recordings with exact timestamps.
-4. **Knowledge Map**: Explore the interactive prerequisite graph and concept dependencies.
-5. **Grounded AI Tutor**:
-   - Ask: `"Explain binary search and its prerequisite."` $\rightarrow$ Receive grounded answer with citations `[Algorithms_Textbook.pdf — Page 42]` and `[Lecture_03_Searching.mp4 — Timestamp 14:22]`.
-   - Click citation to open the interactive **Source Viewer Modal**.
-   - Ask: `"How do I bake chocolate cookies?"` $\rightarrow$ Receive graceful out-of-domain source-grounding refusal without hallucinations.
-6. **Adaptive Assessment**: Generate a quiz on *Searching Algorithms*.
-7. **Misconception Diagnosis**: Answer incorrectly (e.g. claim array must contain positive integers) $\rightarrow$ Agent 6 diagnoses *Precondition Misunderstanding* and delivers remediation.
-8. **Learner Mastery & Personalization**: Check *Learner Analytics* and *Personalized Next* $\rightarrow$ See updated topic mastery score and newly calibrated recommendations with explicit "WHY" rationales.
-9. **Evaluation Dashboard**: Run the automated benchmark suite to observe Faithfulness, Relevancy, Citation Precision, and Refusal Reliability metrics.
+## Login
+
+Student enters the platform using secure authentication.
+
+## Dashboard
+
+The learner can see:
+
+- Overall mastery
+- Active course
+- Topic progress
+- Personalized recommendations
+
+Example:
+
+```text
+Overall Mastery: 65%
+
+Course:
+Data Structures & Algorithms
+```
+
+## Materials
+
+Students can explore indexed:
+
+- Textbooks
+- Slide decks
+- Lecture recordings
+
+with exact source references.
+
+## Knowledge Map
+
+Students can explore relationships between:
+
+```text
+Topics → Concepts → Prerequisites
+```
+
+## AI Tutor
+
+Students can ask questions such as:
+
+```text
+Explain binary search and its prerequisite.
+```
+
+The tutor responds using grounded course sources.
+
+## Adaptive Assessment
+
+The learner generates a quiz based on a selected topic.
+
+Questions are adapted to the learner's current mastery.
+
+## Misconception Diagnosis
+
+If the learner answers incorrectly, the system identifies the underlying conceptual misunderstanding and provides remediation.
+
+## Personalized Next
+
+The learner receives the next recommended learning action based on their updated mastery.
+
+## Evaluation
+
+The evaluation dashboard allows the system's RAG and refusal performance to be benchmarked.
 
 ---
 
-## 🔒 Security & Best Practices
+# 11. API Endpoints
 
-- Standard JWT token bearer authentication.
-- Password hashing with PBKDF2/Bcrypt.
-- Input validation and sanitized SQL queries via SQLAlchemy ORM.
-- No API keys committed or exposed to the frontend client.
+## Authentication
+
+```text
+POST /api/auth/login
+```
+
+Authenticates the learner and returns a JWT token.
+
+## Courses
+
+```text
+GET /api/courses
+GET /api/courses/{id}
+```
+
+## Learning Materials
+
+```text
+POST /api/materials/upload
+GET /api/materials
+GET /api/materials/{id}
+```
+
+## Knowledge Map
+
+```text
+GET /api/knowledge/topics
+GET /api/knowledge/graph
+```
+
+## AI Tutor
+
+```text
+POST /api/tutor/query
+```
+
+Processes learner questions using the grounded RAG tutor.
+
+## Assessment
+
+```text
+POST /api/assessment/generate
+POST /api/assessment/submit
+```
+
+## Learner Analytics
+
+```text
+GET /api/learner/mastery
+GET /api/learner/analytics
+```
+
+## Personalization
+
+```text
+GET /api/personalization/next
+```
+
+## Evaluation
+
+```text
+POST /api/evaluation/run
+GET /api/evaluation/results
+```
 
 ---
 
-## 📄 License
-Created for the Multimodal AI Hackathon 2026. Distributed under the MIT License.
+# 12. Interface
+
+## Login Page
+
+Quick Demo Login and secure learner authentication.
+
+## Dashboard
+
+Displays:
+
+- Overall mastery
+- Course progress
+- Topic performance
+- Next Best Actions
+
+## Materials
+
+Displays indexed PDFs, slides, and lecture recordings with source metadata.
+
+## Knowledge Map
+
+Interactive visualization of topics, concepts, and prerequisites.
+
+## Grounded AI Tutor
+
+Chat interface with:
+
+- Source citations
+- Clickable references
+- Source Viewer Modal
+- Out-of-domain refusal
+
+## Assessment
+
+Adaptive quiz interface with difficulty-aware questions.
+
+## Learner Analytics
+
+Displays topic mastery and learning progress.
+
+## Personalized Next
+
+Displays recommended actions with pedagogical **WHY** explanations.
+
+## Evaluation Dashboard
+
+Displays RAG benchmark results including:
+
+- Faithfulness
+- Relevancy
+- Citation Precision
+- Refusal Reliability
+
+---
+
+# 13. Security Features
+
+### JWT Authentication
+
+Protected APIs require a valid bearer token.
+
+### Password Security
+
+Passwords are protected using PBKDF2/Bcrypt hashing.
+
+### Input Validation
+
+Pydantic schemas validate API inputs.
+
+### SQL Security
+
+SQLAlchemy ORM is used for database interaction and sanitized queries.
+
+### API Key Protection
+
+No API keys are committed or exposed to the frontend client.
+
+### Source Grounding
+
+Tutor responses are constrained to the indexed learning material.
+
+### Out-of-Domain Refusal
+
+The tutor refuses unrelated questions instead of generating unsupported answers.
+
+---
+
+# 14. Future Enhancements
+
+- Spaced repetition scheduling
+- Voice-based AI tutoring
+- Real-time lecture understanding
+- Advanced multimodal video analysis
+- More sophisticated learner modeling
+- Collaborative learning
+- Teacher analytics dashboard
+- Automatic course generation
+- Mobile application
+- Multi-language tutoring
+- Personalized study schedules
+- Long-term learning memory
+
+---
+
+# 15. Core Learning Philosophy
+
+LearnFlow AI is designed around a simple principle:
+
+**Don't just answer the learner's question. Understand what they know, identify what they don't know, and decide what they should learn next.**
+
+The system continuously follows:
+
+```text
+CONTENT
+   ↓
+UNDERSTANDING
+   ↓
+PRACTICE
+   ↓
+ASSESSMENT
+   ↓
+MISCONCEPTION
+   ↓
+MASTERY UPDATE
+   ↓
+PERSONALIZATION
+   ↓
+NEXT BEST ACTION
+   ↓
+MASTER
+```
+
+This creates a continuous adaptive learning loop rather than a conventional chatbot experience.
