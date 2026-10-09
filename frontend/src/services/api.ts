@@ -1,8 +1,9 @@
 import axios from 'axios';
 import {
   User, Course, Material, Topic, Assessment, AssessmentResult,
-  LearnerOverview, EvaluationResults, ChatResponse, Conversation
+  LearnerOverview, EvaluationResults, ChatResponse, Conversation, StudyGuide
 } from '../types';
+
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -78,7 +79,14 @@ export const materialService = {
     const res = await api.delete(`/materials/${materialId}`);
     return res.data;
   },
+  getStudyGuide: async (courseId: string, materialId?: string): Promise<StudyGuide> => {
+    const res = await api.get(`/courses/${courseId}/study-guide`, {
+      params: materialId ? { material_id: materialId } : {},
+    });
+    return res.data;
+  },
 };
+
 
 
 export const knowledgeService = {

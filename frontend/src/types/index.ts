@@ -28,7 +28,28 @@ export interface Material {
   error_message?: string;
   created_at: string;
   chunks_count: number;
+  extracted_topics?: string[];
 }
+
+export interface StudySection {
+  title: string;
+  content: string;
+  key_points: string[];
+  citations: Citation[];
+}
+
+export interface StudyGuide {
+  course_id: string;
+  material_id?: string;
+  material_title?: string;
+  title: string;
+  summary: string;
+  sections: StudySection[];
+  key_definitions: { term: string; definition: string }[];
+  revision_checklist: string[];
+  is_grounded: boolean;
+}
+
 
 export interface Concept {
   id: string;

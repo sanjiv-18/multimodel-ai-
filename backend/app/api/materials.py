@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.db_models import Material, Course, DocumentChunk, User
-from app.schemas.pydantic_schemas import MaterialOut
+from app.schemas.pydantic_schemas import MaterialOut, StudyGuideOut, StudySection, Citation
 from app.agents.ingestion_agent import MultimodalIngestionAgent
+
 from app.core.config import settings
 from app.api.auth import get_current_user
 
@@ -111,6 +112,12 @@ def list_course_materials(
 
     for m in materials:
         chunk_count = db.query(DocumentChunk).filter(DocumentChunk.material_id == m.id).count()
+        raw_topics = db.query(DocumentChunk.topic).filter(
+            DocumentChunk.material_id == m.id,
+            DocumentChunk.topic != None
+        ).distinct().all()
+        extracted_topics = [t[0] for t in raw_topics if t[0] and t[0].strip()]
+
         results.append(MaterialOut(
             id=m.id,
             course_id=m.course_id,
@@ -121,7 +128,8 @@ def list_course_materials(
             status=m.status,
             error_message=m.error_message,
             created_at=m.created_at,
-            chunks_count=chunk_count
+            chunks_count=chunk_count,
+            extracted_topics=extracted_topics
         ))
     return results
 
@@ -136,14 +144,134 @@ def get_material_status(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Material not found")
     
     chunk_count = db.query(DocumentChunk).filter(DocumentChunk.material_id == material.id).count()
+    raw_topics = db.query(DocumentChunk.topic).filter(
+        DocumentChunk.material_id == material.id,
+        DocumentChunk.topic != None
+    ).distinct().all()
+    extracted_topics = [t[0] for t in raw_topics if t[0] and t[0].strip()]
+
     return {
         "id": material.id,
         "title": material.title,
         "status": material.status,
         "file_type": material.file_type,
         "chunks_count": chunk_count,
+        "extracted_topics": extracted_topics,
         "error_message": material.error_message
     }
+
+@router.get("/courses/{course_id}/study-guide", response_model=StudyGuideOut)
+def get_course_study_guide(
+    course_id: str,
+    material_id: str = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+    if course.user_id and course.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Course belongs to another student.")
+
+    # Target specific material or all materials in course
+    chunk_query = db.query(DocumentChunk).filter(DocumentChunk.course_id == course_id)
+    target_mat_title = None
+    if material_id:
+        target_mat = db.query(Material).filter(Material.id == material_id, Material.course_id == course_id).first()
+        if not target_mat:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Specified material not found in course")
+        target_mat_title = target_mat.title
+        chunk_query = chunk_query.filter(DocumentChunk.material_id == material_id)
+
+    chunks = chunk_query.all()
+    if not chunks:
+        return StudyGuideOut(
+            course_id=course_id,
+            material_id=material_id,
+            material_title=target_mat_title,
+            title=f"Study Guide: {target_mat_title or course.title}",
+            summary="I couldn't find enough information in your uploaded notes. Upload relevant material or choose another document to continue.",
+            sections=[],
+            key_definitions=[],
+            revision_checklist=[],
+            is_grounded=False
+        )
+
+    # Group chunks by topic
+    topics_map = {}
+    for ch in chunks:
+        t_name = ch.topic or "Fundamental Principles"
+        if t_name not in topics_map:
+            topics_map[t_name] = []
+        topics_map[t_name].append(ch)
+
+    sections = []
+    all_key_definitions = []
+    all_checkpoints = []
+
+    for t_name, t_chunks in topics_map.items():
+        # Build synthesis from actual chunks
+        sec_sentences = []
+        sec_citations = []
+        for ch in t_chunks:
+            # Build citation
+            snippet = ch.content[:160] + "..." if len(ch.content) > 160 else ch.content
+            sec_citations.append(Citation(
+                source_name=ch.source_name,
+                material_type=ch.material_type,
+                page_number=ch.page_number,
+                slide_number=ch.slide_number,
+                video_timestamp=ch.video_timestamp,
+                topic=t_name,
+                concept=ch.concept,
+                snippet=snippet
+            ))
+            raw_sents = [s.strip() for s in ch.content.split(".") if len(s.strip()) > 20]
+            sec_sentences.extend(raw_sents)
+
+        key_pts = [s for s in sec_sentences[:4]]
+        if not key_pts:
+            key_pts = [f"Core study points for {t_name} extracted from source notes."]
+
+        # Key definitions extracted from chunks if they contain "is" or "defined" or ":"
+        for s in sec_sentences:
+            if " is " in s or ":" in s:
+                parts = s.split(" is ") if " is " in s else s.split(":")
+                if len(parts) >= 2 and len(parts[0].strip()) < 40 and len(parts[1].strip()) > 15:
+                    all_key_definitions.append({
+                        "term": parts[0].strip(),
+                        "definition": parts[1].strip()
+                    })
+                    break
+
+        all_checkpoints.append(f"Master core principles of {t_name}")
+
+        content_body = "\n\n".join([f"- {kp}" for kp in key_pts])
+        sections.append(StudySection(
+            title=t_name,
+            content=f"Key concepts for {t_name} derived directly from your notes:\n\n{content_body}",
+            key_points=key_pts,
+            citations=sec_citations[:3]
+        ))
+
+    guide_title = f"Study Guide: {target_mat_title}" if target_mat_title else f"Course Study Guide: {course.title}"
+    summary_text = (
+        f"Grounded study guide synthesized directly from {len(chunks)} verified sections across "
+        f"{target_mat_title or 'your uploaded class notes'}."
+    )
+
+    return StudyGuideOut(
+        course_id=course_id,
+        material_id=material_id,
+        material_title=target_mat_title,
+        title=guide_title,
+        summary=summary_text,
+        sections=sections,
+        key_definitions=all_key_definitions[:6],
+        revision_checklist=all_checkpoints,
+        is_grounded=True
+    )
+
 
 @router.delete("/materials/{material_id}")
 def delete_material(

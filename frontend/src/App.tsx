@@ -10,6 +10,8 @@ import { TutorChatPage } from './pages/TutorChatPage';
 import { AssessmentPage } from './pages/AssessmentPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { StudyNotesPage } from './pages/StudyNotesPage';
+
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -95,6 +97,15 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/study"
+            element={
+              <ProtectedRoute>
+                <StudyNotesPage />
+              </ProtectedRoute>
+            }
+          />
+
 
           {/* Alias / compatibility routes */}
           <Route path="/assessment" element={<Navigate to="/practice" replace />} />

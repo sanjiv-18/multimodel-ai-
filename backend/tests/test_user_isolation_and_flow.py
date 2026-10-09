@@ -231,3 +231,61 @@ def test_duplicate_assessment_submission_rejected():
     res2 = client.post(f"/api/assessments/{ass['id']}/submit", headers=headers, json=sub_payload)
     assert res2.status_code == 400
 
+def test_upload_notes_study_guide_flow():
+    email = f"study_{uuid.uuid4().hex[:8]}@university.edu"
+    client.post("/api/auth/register", json={"email": email, "password": "Password123!", "full_name": "Study Student"})
+    token = client.post("/api/auth/login", json={"email": email, "password": "Password123!"}).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Create Course
+    course = client.post("/api/courses", headers=headers, json={"title": "Quantum Physics 101"}).json()
+    course_id = course["id"]
+
+    # 2. Check study guide before any materials -> empty state
+    empty_guide = client.get(f"/api/courses/{course_id}/study-guide", headers=headers).json()
+    assert empty_guide["is_grounded"] is False
+    assert len(empty_guide["sections"]) == 0
+
+    # 3. Upload real note material
+    note_content = (
+        "# Quantum Entanglement\n"
+        "Entanglement is a physical phenomenon that occurs when a group of particles interact "
+        "such that the quantum state of each particle cannot be described independently.\n"
+        "## Bell State\n"
+        "The Bell states are four specific maximally entangled quantum states of two qubits.\n"
+        "Key principle: Measurement of one particle instantly determines the state of the other."
+    )
+    mat_res = client.post(
+        f"/api/courses/{course_id}/materials",
+        headers=headers,
+        files={"file": ("quantum_notes.txt", note_content.encode("utf-8"), "text/plain")},
+        data={"title": "Quantum Fundamentals"}
+    )
+    assert mat_res.status_code == 200
+    mat_data = mat_res.json()
+    assert mat_data["status"] == "completed"
+
+    # 4. Check materials endpoint returns extracted_topics
+    mats_list = client.get(f"/api/courses/{course_id}/materials", headers=headers).json()
+    assert len(mats_list) == 1
+    assert "extracted_topics" in mats_list[0]
+
+    # 5. Retrieve grounded study guide
+    guide_res = client.get(f"/api/courses/{course_id}/study-guide", headers=headers)
+    assert guide_res.status_code == 200
+    guide = guide_res.json()
+    assert guide["is_grounded"] is True
+    assert len(guide["sections"]) > 0
+    assert len(guide["key_definitions"]) > 0
+    assert len(guide["revision_checklist"]) > 0
+    assert len(guide["sections"][0]["citations"]) > 0
+    assert guide["sections"][0]["citations"][0]["source_name"] in ["Quantum Fundamentals", "quantum_notes.txt"]
+
+    # 6. Verify user isolation: another user cannot access this study guide
+    other_email = f"other_{uuid.uuid4().hex[:8]}@university.edu"
+    client.post("/api/auth/register", json={"email": other_email, "password": "Password123!", "full_name": "Other"})
+    other_token = client.post("/api/auth/login", json={"email": other_email, "password": "Password123!"}).json()["access_token"]
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+    forbidden_res = client.get(f"/api/courses/{course_id}/study-guide", headers=other_headers)
+    assert forbidden_res.status_code == 403
+

@@ -5,7 +5,7 @@ import { Course, Material, Topic, LearnerOverview } from '../types';
 import {
   BookOpen, Layers, UploadCloud, MessageSquare, HelpCircle, BarChart3,
   FileText, Presentation, Video, CheckCircle2, Clock, Sparkles, Plus,
-  FolderPlus, X, RefreshCw, Trash2
+  FolderPlus, X, RefreshCw, Trash2, PenTool
 } from 'lucide-react';
 
 export const CourseDetailPage: React.FC = () => {
@@ -394,13 +394,52 @@ export const CourseDetailPage: React.FC = () => {
 
                       <div>
                         <h4 className="font-bold text-sm text-slate-900 truncate">{mat.title}</h4>
-                        <p className="text-xs text-slate-500 font-mono mt-1">
-                          {mat.chunks_count} semantic chunks indexed
+                        <p className="text-xs text-slate-500 font-mono mt-0.5">
+                          {mat.chunks_count} semantic chunks indexed • {(mat.file_size_bytes / (1024 * 1024)).toFixed(1)} MB
                         </p>
+                        {mat.extracted_topics && mat.extracted_topics.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {mat.extracted_topics.slice(0, 3).map((top, idx) => (
+                              <span key={idx} className="text-[10px] px-2 py-0.5 bg-slate-100 rounded text-slate-600 font-medium">
+                                {top}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Explicit Study Actions for this Document */}
+                      <div className="pt-2.5 border-t border-slate-100 grid grid-cols-3 gap-1.5 text-center">
+                        <button
+                          onClick={() => navigate(`/study?course_id=${selectedCourseId}&material_id=${mat.id}`)}
+                          className="px-2 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                          title="Study Guide"
+                        >
+                          <BookOpen className="w-3 h-3" /> Study
+                        </button>
+                        <button
+                          onClick={() => navigate('/tutor', {
+                            state: {
+                              courseId: selectedCourseId,
+                              initialPrompt: `What are the core concepts and findings covered in "${mat.title}"?`,
+                            },
+                          })}
+                          className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                          title="Ask Tutor"
+                        >
+                          <HelpCircle className="w-3 h-3" /> Tutor
+                        </button>
+                        <button
+                          onClick={() => navigate(`/practice?course_id=${selectedCourseId}`)}
+                          className="px-2 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                          title="Practice Quiz"
+                        >
+                          <PenTool className="w-3 h-3" /> Practice
+                        </button>
                       </div>
 
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                        <span className="uppercase font-mono text-[10px]">{mat.file_type} • {(mat.file_size_bytes / (1024 * 1024)).toFixed(1)} MB</span>
+                        <span className="uppercase font-mono text-[10px]">{mat.file_type}</span>
                         <button
                           onClick={() => handleDeleteMaterial(mat.id, mat.title)}
                           title="Delete Document"

@@ -12,8 +12,10 @@ import {
   Sparkles,
   Plus,
   AlertCircle,
-  FolderPlus
+  FolderPlus,
+  UploadCloud
 } from 'lucide-react';
+import { UploadNotesModal } from '../components/UploadNotesModal';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -22,6 +24,8 @@ export const DashboardPage: React.FC = () => {
   const [overview, setOverview] = useState<LearnerOverview | null>(null);
   const [quickQuery, setQuickQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,6 +80,46 @@ export const DashboardPage: React.FC = () => {
           </p>
         </div>
 
+        {/* Primary Action Banner: Upload Notes & Study */}
+        <div className="p-6 rounded-3xl bg-linear-to-r from-indigo-50/80 via-white to-slate-50 border border-indigo-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+              <UploadCloud className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                Upload Notes & Study
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">
+                  Source Grounded
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Upload your class notes, slides, or textbook and learn directly from your materials.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>Upload Notes & Study</span>
+            </button>
+
+            {hasCourses && (
+              <button
+                onClick={() => navigate(`/study?course_id=${primaryCourse.id}`)}
+                className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <BookOpen className="w-4 h-4 text-slate-500" />
+                <span>Continue Studying</span>
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Input Bar */}
         <form
           onSubmit={(e) => {
@@ -126,6 +170,14 @@ export const DashboardPage: React.FC = () => {
           >
             Practice adaptive quiz
           </button>
+          {hasCourses && (
+            <button
+              onClick={() => navigate(`/study?course_id=${primaryCourse.id}`)}
+              className="text-xs px-3 py-1 rounded-lg bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 font-medium transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1"
+            >
+              <BookOpen className="w-3 h-3" /> Study Guide
+            </button>
+          )}
         </div>
       </div>
 
@@ -133,32 +185,33 @@ export const DashboardPage: React.FC = () => {
       {!hasCourses && (
         <div className="p-8 rounded-3xl bg-white border border-slate-200 shadow-sm text-center space-y-5">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto">
-            <FolderPlus className="w-6 h-6" />
+            <UploadCloud className="w-6 h-6" />
           </div>
           <div className="space-y-1 max-w-md mx-auto">
             <h3 className="text-base font-bold text-slate-900">
               Welcome to LearnFlow AI
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              You haven't created any courses yet. Create a course and upload your textbook PDFs, lecture slides, or class notes to unlock grounded tutoring and adaptive quizzing.
+              Upload your class notes, lecture slides, or textbook to create your personal study space. Your tutor answers questions strictly using the material you provide.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button
-              onClick={() => navigate('/courses')}
+              onClick={() => setShowUploadModal(true)}
               className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> Create Course
+              <UploadCloud className="w-4 h-4" /> Upload Notes & Study
             </button>
             <button
-              onClick={() => navigate('/tutor')}
+              onClick={() => navigate('/courses')}
               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <BookOpen className="w-4 h-4 text-slate-500" /> Go to AI Tutor
+              <FolderPlus className="w-4 h-4 text-slate-500" /> Create Course in My Courses
             </button>
           </div>
         </div>
       )}
+
 
       {/* If User Has Courses: Show the 3 Focused Learning Cards */}
       {hasCourses && (
@@ -311,6 +364,18 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Upload Notes & Study Modal */}
+      <UploadNotesModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        defaultCourseId={primaryCourse?.id}
+        onUploadSuccess={(cId, mat) => {
+          // Refresh courses
+          courseService.list().then(setCourses);
+        }}
+      />
     </div>
   );
 };
+

@@ -57,8 +57,10 @@ class MaterialOut(BaseModel):
     error_message: Optional[str] = None
     created_at: datetime
     chunks_count: Optional[int] = 0
+    extracted_topics: Optional[List[str]] = []
     class Config:
         from_attributes = True
+
 
 # --- Knowledge & Topics ---
 class ConceptOut(BaseModel):
@@ -112,6 +114,24 @@ class Citation(BaseModel):
     concept: Optional[str] = None
     snippet: str
     relevance_score: Optional[float] = None
+
+# --- Study Guide ---
+class StudySection(BaseModel):
+    title: str
+    content: str
+    key_points: List[str] = []
+    citations: List[Citation] = []
+
+class StudyGuideOut(BaseModel):
+    course_id: str
+    material_id: Optional[str] = None
+    material_title: Optional[str] = None
+    title: str
+    summary: str
+    sections: List[StudySection]
+    key_definitions: List[Dict[str, str]] = []
+    revision_checklist: List[str] = []
+    is_grounded: bool = True
 
 class ChatRequest(BaseModel):
     message: str
