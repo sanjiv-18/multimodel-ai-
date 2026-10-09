@@ -5,7 +5,7 @@ import { Course, Material, Topic, LearnerOverview } from '../types';
 import {
   BookOpen, Layers, UploadCloud, MessageSquare, HelpCircle, BarChart3,
   FileText, Presentation, Video, CheckCircle2, Clock, Sparkles, Plus,
-  FolderPlus, X, RefreshCw
+  FolderPlus, X, RefreshCw, Trash2
 } from 'lucide-react';
 
 export const CourseDetailPage: React.FC = () => {
@@ -110,6 +110,36 @@ export const CourseDetailPage: React.FC = () => {
       setUploading(false);
     }
   };
+
+  const handleDeleteCourse = async (courseId: string, courseTitle: string) => {
+    if (!window.confirm(`Are you sure you want to delete course "${courseTitle}"? All associated materials, indexed chunks, and progress records will be permanently removed.`)) {
+      return;
+    }
+    try {
+      await courseService.delete(courseId);
+      setSelectedCourseId('');
+      await loadCourses();
+    } catch (err) {
+      console.error('Failed to delete course', err);
+      alert('Could not delete course. Please try again.');
+    }
+  };
+
+  const handleDeleteMaterial = async (materialId: string, materialTitle: string) => {
+    if (!window.confirm(`Delete document "${materialTitle}"? Its extracted chunks and retrieval indexes will be removed immediately.`)) {
+      return;
+    }
+    try {
+      await materialService.delete(materialId);
+      if (selectedCourseId) {
+        await loadCourseDetails(selectedCourseId);
+      }
+    } catch (err) {
+      console.error('Failed to delete material', err);
+      alert('Could not delete material. Please try again.');
+    }
+  };
+
 
   if (loading && courses.length === 0) {
     return (
@@ -224,6 +254,13 @@ export const CourseDetailPage: React.FC = () => {
                       <UploadCloud className="w-4 h-4" /> Ingest Notes / Slides
                     </>
                   )}
+                </button>
+                <button
+                  onClick={() => handleDeleteCourse(currentCourse.id, currentCourse.title)}
+                  title="Delete Course"
+                  className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -363,8 +400,14 @@ export const CourseDetailPage: React.FC = () => {
                       </div>
 
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                        <span className="uppercase font-mono text-[10px]">{mat.file_type}</span>
-                        <span>{(mat.file_size_bytes / (1024 * 1024)).toFixed(1)} MB</span>
+                        <span className="uppercase font-mono text-[10px]">{mat.file_type} • {(mat.file_size_bytes / (1024 * 1024)).toFixed(1)} MB</span>
+                        <button
+                          onClick={() => handleDeleteMaterial(mat.id, mat.title)}
+                          title="Delete Document"
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   ))}

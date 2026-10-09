@@ -137,3 +137,46 @@ def get_material_status(
         "chunks_count": chunk_count,
         "error_message": material.error_message
     }
+
+@router.delete("/materials/{material_id}")
+def delete_material(
+    material_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    material = db.query(Material).filter(Material.id == material_id).first()
+    if not material:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Material not found")
+
+    course = db.query(Course).filter(Course.id == material.course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    if course.user_id and course.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete material from this course")
+
+    # Delete physical file if exists
+    if material.file_path and os.path.exists(material.file_path):
+        try:
+            os.remove(material.file_path)
+        except Exception:
+            pass
+
+    # Delete document chunks
+    db.query(DocumentChunk).filter(DocumentChunk.material_id == material.id).delete()
+    
+    # Delete material record
+    db.delete(material)
+    db.commit()
+
+    # Refresh course knowledge organization
+    from app.agents.knowledge_agent import KnowledgeOrganizationAgent
+    from app.agents.personalization_agent import PersonalizationAgent
+    k_agent = KnowledgeOrganizationAgent(db)
+    k_agent.organize_course_knowledge(course.id)
+
+    p_agent = PersonalizationAgent(db)
+    p_agent.generate_recommendations(current_user.id, course.id)
+
+    return {"status": "deleted", "material_id": material_id}
+

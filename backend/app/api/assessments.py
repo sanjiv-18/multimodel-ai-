@@ -108,9 +108,21 @@ def submit_assessment_answers(
     if not assessment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assessment not found")
 
+    if assessment.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot submit an assessment belonging to another user")
+
+    # Prevent duplicate submission
+    prior_attempts = db.query(QuestionAttempt).filter(
+        QuestionAttempt.assessment_id == assessment_id,
+        QuestionAttempt.user_id == current_user.id
+    ).count()
+    if prior_attempts > 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This assessment has already been submitted and graded.")
+
     misconception_agent = MisconceptionAnalysisAgent(db)
     learner_agent = LearnerModelAgent(db)
     personalization_agent = PersonalizationAgent(db)
+
 
     results = []
     correct_count = 0

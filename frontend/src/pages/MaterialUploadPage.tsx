@@ -3,7 +3,7 @@ import { materialService, courseService } from '../services/api';
 import { Material, Course } from '../types';
 import {
   UploadCloud, FileText, Presentation, Video, CheckCircle2,
-  AlertCircle, Sparkles, Layers, Check, Loader2, FolderPlus
+  AlertCircle, Sparkles, Layers, Check, Loader2, FolderPlus, Trash2
 } from 'lucide-react';
 
 export const MaterialUploadPage: React.FC = () => {
@@ -16,6 +16,23 @@ export const MaterialUploadPage: React.FC = () => {
   const [currentStage, setCurrentStage] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [error, setError] = useState<string>('');
+
+  const handleDelete = async (matId: string, matTitle: string) => {
+    if (!window.confirm(`Delete document "${matTitle}"? Its extracted chunks will be removed from retrieval immediately.`)) {
+      return;
+    }
+    try {
+      await materialService.delete(matId);
+      if (selectedCourseId) {
+        const refreshed = await materialService.list(selectedCourseId);
+        setMaterials(refreshed);
+      }
+    } catch (err) {
+      console.error('Failed to delete material', err);
+      alert('Could not delete material.');
+    }
+  };
+
 
   const loadData = async () => {
     try {
@@ -253,9 +270,18 @@ export const MaterialUploadPage: React.FC = () => {
                   </div>
                 </div>
 
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase font-semibold">
-                  {mat.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase font-semibold">
+                    {mat.status}
+                  </span>
+                  <button
+                    onClick={() => handleDelete(mat.id, mat.title)}
+                    title="Delete Document"
+                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

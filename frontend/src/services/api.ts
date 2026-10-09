@@ -50,6 +50,10 @@ export const courseService = {
     const res = await api.post('/courses', { title, description, code });
     return res.data;
   },
+  delete: async (courseId: string): Promise<{ status: string }> => {
+    const res = await api.delete(`/courses/${courseId}`);
+    return res.data;
+  },
 };
 
 export const materialService = {
@@ -70,7 +74,12 @@ export const materialService = {
     const res = await api.get(`/materials/${materialId}/status`);
     return res.data;
   },
+  delete: async (materialId: string): Promise<{ status: string }> => {
+    const res = await api.delete(`/materials/${materialId}`);
+    return res.data;
+  },
 };
+
 
 export const knowledgeService = {
   getTopics: async (courseId: string): Promise<Topic[]> => {

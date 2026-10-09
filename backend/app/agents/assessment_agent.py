@@ -52,7 +52,14 @@ class AssessmentGenerationAgent:
         self.db.flush()
 
         # Generate verified questions for topic
-        candidate_pool = self._get_question_bank(topic, difficulty)
+        # 1. First attempt dynamic question generation from actual course chunks
+        candidate_pool = self._generate_from_course_chunks(course_id, topic, difficulty)
+        
+        # 2. If dynamic generation produces fewer than needed, blend with curated bank
+        if len(candidate_pool) < num_questions:
+            bank_items = self._get_question_bank(topic, difficulty)
+            candidate_pool.extend(bank_items)
+
         selected_questions = []
 
         for item in candidate_pool:
@@ -75,7 +82,7 @@ class AssessmentGenerationAgent:
                 topic=topic,
                 concept=item.get("concept", topic),
                 difficulty=difficulty,
-                source_reference=item.get("source_reference", "Algorithms Course Material"),
+                source_reference=item.get("source_reference", "Course Learning Material"),
                 is_verified=True,
                 verification_notes=v_notes
             )
@@ -85,6 +92,56 @@ class AssessmentGenerationAgent:
         self.db.commit()
         self.db.refresh(assessment)
         return assessment
+
+    def _generate_from_course_chunks(self, course_id: str, topic: str, difficulty: str) -> List[Dict[str, Any]]:
+        chunks = self.db.query(DocumentChunk).filter(
+            DocumentChunk.course_id == course_id,
+            DocumentChunk.topic.ilike(f"%{topic}%")
+        ).limit(6).all()
+
+        if not chunks:
+            # Fallback to any chunks in the course
+            chunks = self.db.query(DocumentChunk).filter(
+                DocumentChunk.course_id == course_id
+            ).limit(4).all()
+
+        questions = []
+        for ch in chunks:
+            loc = ""
+            if ch.material_type == "pdf" and ch.page_number:
+                loc = f"Page {ch.page_number}"
+            elif ch.material_type == "pptx" and ch.slide_number:
+                loc = f"Slide {ch.slide_number}"
+            elif ch.material_type == "video" and ch.video_timestamp:
+                loc = f"Timestamp {ch.video_timestamp}"
+            src_ref = f"{ch.source_name} — {loc}" if loc else ch.source_name
+
+            # Extract key statements from chunk content
+            sentences = [s.strip() for s in ch.content.split(".") if len(s.strip()) > 25]
+            if not sentences:
+                continue
+
+            lead_fact = sentences[0]
+            concept_name = ch.concept or ch.topic or topic
+
+            q_item = {
+                "question_text": f"Based on {ch.source_name}, which statement accurately reflects the principles of {concept_name}?",
+                "question_type": "mcq",
+                "options": [
+                    lead_fact,
+                    f"{concept_name} operates with arbitrary unconstrained parameters.",
+                    f"{concept_name} requires no formal terminating or boundary conditions.",
+                    f"Execution of {concept_name} completely bypasses memory state constraints."
+                ],
+                "correct_answer": lead_fact,
+                "explanation": f"As documented in {src_ref}: '{lead_fact}'.",
+                "concept": concept_name,
+                "source_reference": src_ref
+            }
+            questions.append(q_item)
+
+        return questions
+
 
     def _get_question_bank(self, topic: str, difficulty: str) -> List[Dict[str, Any]]:
         lower_t = topic.lower()

@@ -134,3 +134,81 @@ def test_user_data_isolation():
     b_courses = client.get("/api/courses", headers=headers_b).json()
     b_course_ids = [c["id"] for c in b_courses]
     assert alpha_course_id not in b_course_ids
+
+def test_material_and_course_deletion():
+    email = f"deleter_{uuid.uuid4().hex[:8]}@university.edu"
+    client.post("/api/auth/register", json={"email": email, "password": "Password123!", "full_name": "Deleter"})
+    token = client.post("/api/auth/login", json={"email": email, "password": "Password123!"}).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Create Course
+    course = client.post("/api/courses", headers=headers, json={"title": "To Delete Course"}).json()
+    course_id = course["id"]
+
+    # Upload material
+    mat = client.post(
+        f"/api/courses/{course_id}/materials",
+        headers=headers,
+        files={"file": ("temp_notes.txt", b"Transient note content for deletion test.", "text/plain")},
+        data={"title": "Temp Note"}
+    ).json()
+    mat_id = mat["id"]
+
+    # Verify material exists
+    mats_before = client.get(f"/api/courses/{course_id}/materials", headers=headers).json()
+    assert any(m["id"] == mat_id for m in mats_before)
+
+    # Delete material
+    del_mat_res = client.delete(f"/api/materials/{mat_id}", headers=headers)
+    assert del_mat_res.status_code == 200
+
+    # Verify material no longer listed
+    mats_after = client.get(f"/api/courses/{course_id}/materials", headers=headers).json()
+    assert not any(m["id"] == mat_id for m in mats_after)
+
+    # Delete course
+    del_course_res = client.delete(f"/api/courses/{course_id}", headers=headers)
+    assert del_course_res.status_code == 200
+
+    # Verify course no longer in list
+    courses_after = client.get("/api/courses", headers=headers).json()
+    assert not any(c["id"] == course_id for c in courses_after)
+
+def test_duplicate_assessment_submission_rejected():
+    email = f"exam_{uuid.uuid4().hex[:8]}@university.edu"
+    client.post("/api/auth/register", json={"email": email, "password": "Password123!", "full_name": "Examinee"})
+    token = client.post("/api/auth/login", json={"email": email, "password": "Password123!"}).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Create Course and Material
+    course = client.post("/api/courses", headers=headers, json={"title": "Exam Prep"}).json()
+    course_id = course["id"]
+    client.post(
+        f"/api/courses/{course_id}/materials",
+        headers=headers,
+        files={"file": ("quiz_notes.txt", b"# Logic Gates\nAND, OR, NOT, XOR gates form digital combinational circuits.", "text/plain")},
+        data={"title": "Digital Logic"}
+    )
+
+    # Generate Assessment
+    topics = client.get(f"/api/courses/{course_id}/topics", headers=headers).json()
+    topic_name = topics[0]["name"] if topics else "Logic Gates"
+
+    ass = client.post(f"/api/courses/{course_id}/assessments/generate", headers=headers, json={
+        "topic": topic_name,
+        "difficulty": "Easy",
+        "num_questions": 1,
+        "adaptive_mode": False
+    }).json()
+
+    q_id = ass["questions"][0]["id"]
+    sub_payload = {"submissions": [{"question_id": q_id, "student_answer": "AND"}]}
+
+    # First submission -> 200 OK
+    res1 = client.post(f"/api/assessments/{ass['id']}/submit", headers=headers, json=sub_payload)
+    assert res1.status_code == 200
+
+    # Second submission on same assessment -> must be 400 Bad Request
+    res2 = client.post(f"/api/assessments/{ass['id']}/submit", headers=headers, json=sub_payload)
+    assert res2.status_code == 400
+
