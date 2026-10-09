@@ -25,16 +25,19 @@ def get_student_mastery(
     records = query.all()
     results = []
     for r in records:
-        status_lbl = "Developing (40-75%)"
-        if r.mastery_score < 0.40:
-            status_lbl = "Weak (<40%)"
-        elif r.mastery_score >= 0.75:
-            status_lbl = "Mastered (>75%)"
+        status_lbl = "Not started"
+        if r.total_attempts > 0:
+            if r.mastery_score < 0.40:
+                status_lbl = "Weak (<40%)"
+            elif r.mastery_score >= 0.75:
+                status_lbl = "Mastered (>75%)"
+            else:
+                status_lbl = "Developing (40-75%)"
 
         results.append(LearnerMasteryOut(
             topic=r.topic,
             concept=r.concept,
-            mastery_score=r.mastery_score,
+            mastery_score=r.mastery_score if r.total_attempts > 0 else 0.0,
             total_attempts=r.total_attempts,
             correct_attempts=r.correct_attempts,
             status=status_lbl,
@@ -73,7 +76,7 @@ def get_student_recommendations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Ensure fresh recommendations
+    # If course_id provided, ensure fresh recommendations
     if course_id:
         p_agent = PersonalizationAgent(db)
         p_agent.generate_recommendations(current_user.id, course_id)
@@ -107,8 +110,22 @@ def get_learner_overview(
 ):
     target_course_id = course_id
     if not target_course_id:
-        first_course = db.query(Course).first()
-        target_course_id = first_course.id if first_course else "default"
+        user_first_course = db.query(Course).filter(
+            (Course.user_id == current_user.id) | (Course.user_id == None)
+        ).first()
+        target_course_id = user_first_course.id if user_first_course else None
+
+    if not target_course_id:
+        # Honest empty state for user with no courses
+        return LearnerOverviewOut(
+            overall_mastery=0.0,
+            topics_mastery=[],
+            weak_topics=[],
+            strong_topics=[],
+            active_misconceptions=[],
+            recommendations=[],
+            recent_activity_count=0
+        )
 
     agent = LearnerModelAgent(db)
     profile = agent.get_learner_profile(current_user.id, target_course_id)
@@ -118,6 +135,10 @@ def get_learner_overview(
         Recommendation.user_id == current_user.id,
         Recommendation.course_id == target_course_id
     ).order_by(Recommendation.priority.asc()).all()
+
+    if not recs:
+        p_agent = PersonalizationAgent(db)
+        recs = p_agent.generate_recommendations(current_user.id, target_course_id)
 
     rec_outs = [
         RecommendationOut(

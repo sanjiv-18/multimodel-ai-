@@ -10,20 +10,21 @@ import {
   HelpCircle,
   Sparkles,
   ArrowRight,
-  Bookmark,
   RefreshCw,
   PenTool,
   Paperclip,
   X,
   FileText,
   UploadCloud,
-  CheckCircle2
+  CheckCircle2,
+  FolderPlus
 } from 'lucide-react';
 
 export const TutorChatPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputQuery, setInputQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -42,7 +43,9 @@ export const TutorChatPage: React.FC = () => {
         const cList = await courseService.list();
         setCourses(cList);
         if (cList.length > 0) {
-          const convs = await tutorService.listConversations(cList[0].id);
+          const cId = cList[0].id;
+          setSelectedCourseId(cId);
+          const convs = await tutorService.listConversations(cId);
           if (convs.length > 0 && convs[0].messages.length > 0) {
             setConversationId(convs[0].id);
             setMessages(convs[0].messages);
@@ -51,8 +54,7 @@ export const TutorChatPage: React.FC = () => {
               {
                 id: 'init-1',
                 sender: 'tutor',
-                content:
-                  "Hi! I am your course tutor. Ask me any doubt about your course, or **upload your lecture notes / slides** (PDF, TXT, PPT) using the 📎 button below to ask questions directly from your own material.",
+                content: `Hi! I am your AI course tutor for **${cList[0].title}**. Ask any doubt grounded in your course materials, or click 📎 to upload class notes and slides directly.`,
                 citations: [],
                 is_grounded: true,
                 created_at: new Date().toISOString(),
@@ -88,11 +90,37 @@ export const TutorChatPage: React.FC = () => {
     }
   };
 
+  const handleCourseChange = async (courseId: string) => {
+    setSelectedCourseId(courseId);
+    try {
+      const convs = await tutorService.listConversations(courseId);
+      if (convs.length > 0 && convs[0].messages.length > 0) {
+        setConversationId(convs[0].id);
+        setMessages(convs[0].messages);
+      } else {
+        const cObj = courses.find(c => c.id === courseId);
+        setConversationId(undefined);
+        setMessages([
+          {
+            id: `init-${courseId}`,
+            sender: 'tutor',
+            content: `Hi! I am your AI tutor for **${cObj?.title || 'this course'}**. Ask me any doubt grounded in your course materials.`,
+            citations: [],
+            is_grounded: true,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error('Failed to switch course conversations', err);
+    }
+  };
+
   const handleSend = async (queryToSend?: string) => {
     const query = queryToSend || inputQuery;
-    if ((!query.trim() && !attachedFile) || courses.length === 0 || loading) return;
+    if ((!query.trim() && !attachedFile) || !selectedCourseId || loading) return;
 
-    const courseId = courses[0].id;
+    const courseId = selectedCourseId;
     let finalQuery = query.trim();
 
     setLoading(true);
@@ -102,7 +130,7 @@ export const TutorChatPage: React.FC = () => {
     if (attachedFile) {
       setUploadingFile(true);
       try {
-        const uploadResult = await materialService.upload(
+        await materialService.upload(
           courseId,
           attachedFile,
           attachedFile.name
@@ -111,9 +139,8 @@ export const TutorChatPage: React.FC = () => {
         const fileName = attachedFile.name;
         setAttachedFile(null);
 
-        // If user didn't write a question, default to explaining the notes
         if (!finalQuery) {
-          finalQuery = `I just uploaded my notes "${fileName}". Please give me a concise summary and explain the core concepts and key points.`;
+          finalQuery = `I just uploaded "${fileName}". Please explain the key concepts and summarize the main takeaways.`;
         }
 
         const userMsg: Message = {
@@ -143,15 +170,16 @@ export const TutorChatPage: React.FC = () => {
     }
 
     try {
-      const response = await tutorService.chat(courseId, finalQuery, conversationId);
-      setConversationId(response.conversation_id);
-      setMessages((prev) => [...prev, response.message]);
+      const res = await tutorService.chat(courseId, finalQuery, conversationId);
+      setConversationId(res.conversation_id);
+      setMessages((prev) => [...prev, res.message]);
     } catch (err) {
-      console.error('Tutor chat error', err);
+      console.error('Failed to get tutor answer', err);
       const errorMsg: Message = {
         id: `err-${Date.now()}`,
         sender: 'tutor',
-        content: "I couldn't retrieve that information right now. Please try asking again.",
+        content:
+          'I encountered a connection error while checking course materials. Please make sure materials are uploaded or try again.',
         citations: [],
         is_grounded: false,
         created_at: new Date().toISOString(),
@@ -162,124 +190,141 @@ export const TutorChatPage: React.FC = () => {
     }
   };
 
-  const handleActionChip = (actionType: string, msg: Message) => {
-    if (actionType === 'practice') {
+  const handleActionClick = (actionType: 'simply' | 'example' | 'practice' | 'source', lastMsg: Message) => {
+    if (actionType === 'simply') {
+      handleSend('Can you explain this again in simpler terms with a basic analogy?');
+    } else if (actionType === 'example') {
+      handleSend('Can you provide a clear, step-by-step concrete example of this?');
+    } else if (actionType === 'practice') {
       navigate('/practice');
-    } else if (actionType === 'show_source' && msg.citations && msg.citations.length > 0) {
-      setActiveCitation(msg.citations[0]);
-    } else if (actionType === 'explain_simply') {
-      handleSend('Explain that concept more simply in plain terms.');
-    } else if (actionType === 'show_example') {
-      handleSend('Show me a concrete step-by-step code example of that.');
+    } else if (actionType === 'source') {
+      if (lastMsg.citations && lastMsg.citations.length > 0) {
+        setActiveCitation(lastMsg.citations[0]);
+      }
     }
   };
 
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-6 flex flex-col h-[calc(100vh-4rem)]">
-      {/* Top Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 shrink-0">
-        <div>
-          <h2 className="text-sm font-semibold text-white">AI Tutor</h2>
-          <p className="text-[11px] text-slate-400">
-            Ask any doubt or upload your notes to get instant grounded explanations
+  // If no courses exist
+  if (courses.length === 0) {
+    return (
+      <div className="max-w-3xl mx-auto px-6 py-12 text-center space-y-5 animate-fadeIn">
+        <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto">
+          <FolderPlus className="w-6 h-6" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-lg font-bold text-slate-900">No Courses Available</h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            To ask doubts grounded in your learning materials, create a course and upload your documents first.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="text-xs px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
-            title="Upload notes file"
-          >
-            <Paperclip className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Upload Notes</span>
-          </button>
+        <button
+          onClick={() => navigate('/courses')}
+          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
+        >
+          <FolderPlus className="w-4 h-4" /> Create Course in My Courses
+        </button>
+      </div>
+    );
+  }
 
-          <button
-            onClick={() => {
-              setMessages([]);
-              setConversationId(undefined);
-            }}
-            className="text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-          >
-            New conversation
-          </button>
+  const currentCourse = courses.find(c => c.id === selectedCourseId) || courses[0];
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 flex flex-col h-[calc(100vh-4.5rem)] animate-fadeIn">
+      {/* Header with Course Selector */}
+      <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-900">AI Tutor</span>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium">
+              Source Grounded
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Answers backed strictly by uploaded documents
+          </p>
         </div>
+
+        {courses.length > 1 && (
+          <select
+            value={selectedCourseId}
+            onChange={(e) => handleCourseChange(e.target.value)}
+            className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-semibold focus:outline-none focus:border-indigo-500 shadow-2xs"
+          >
+            {courses.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
-      {/* Hidden File Input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileSelect}
-        accept=".pdf,.txt,.md,.ppt,.pptx,.doc,.docx"
-        className="hidden"
-      />
+      {/* Messages Scroll Area */}
+      <div className="flex-1 overflow-y-auto py-5 space-y-5 pr-1">
+        {messages.map((m, idx) => {
+          const isTutor = m.sender === 'tutor';
+          const isLatestTutor = isTutor && idx === messages.length - 1;
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto space-y-6 py-6 pr-1">
-        {messages.map((msg) => {
-          const isTutor = msg.sender === 'tutor';
           return (
             <div
-              key={msg.id}
-              className={`flex flex-col ${isTutor ? 'items-start' : 'items-end'}`}
+              key={m.id || idx}
+              className={`flex flex-col ${isTutor ? 'items-start' : 'items-end'} space-y-2`}
             >
+              {/* Message Bubble */}
               <div
-                className={`max-w-[88%] rounded-2xl px-4 py-3.5 space-y-3 ${
+                className={`max-w-[90%] sm:max-w-[82%] p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                   isTutor
-                    ? 'bg-slate-900 border border-slate-800/90 text-slate-200 text-sm leading-relaxed'
-                    : 'bg-indigo-600 text-white text-sm shadow-sm'
+                    ? 'bg-white border border-slate-200 shadow-sm text-slate-800'
+                    : 'bg-indigo-600 text-white shadow-sm'
                 }`}
               >
-                {/* Content */}
-                <div className="whitespace-pre-wrap font-sans">{msg.content}</div>
+                <div className="whitespace-pre-wrap">{m.content}</div>
 
-                {/* Source References */}
-                {isTutor && msg.citations && msg.citations.length > 0 && (
-                  <div className="pt-2.5 border-t border-slate-800/80 space-y-1.5">
-                    <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
-                      From your course & notes:
+                {/* Grounded Citations Badges */}
+                {isTutor && m.citations && m.citations.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-slate-400 mr-1">
+                      Sources:
                     </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {msg.citations.map((c, idx) => (
-                        <CitationBadge
-                          key={idx}
-                          citation={c}
-                          onClick={(cit) => setActiveCitation(cit)}
-                        />
-                      ))}
-                    </div>
+                    {m.citations.map((c, cIdx) => (
+                      <CitationBadge
+                        key={cIdx}
+                        citation={c}
+                        onClick={() => setActiveCitation(c)}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
 
-              {/* Contextual Action Chips */}
-              {isTutor && msg.id !== 'init-1' && (
-                <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pl-1">
+              {/* Contextual Action Chips (For latest Tutor message) */}
+              {isLatestTutor && !loading && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-1">
                   <button
-                    onClick={() => handleActionChip('explain_simply', msg)}
-                    className="text-xs px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                    onClick={() => handleActionClick('simply', m)}
+                    className="text-[11px] px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer"
                   >
-                    Explain simply
+                    💡 Explain simply
                   </button>
                   <button
-                    onClick={() => handleActionChip('show_example', msg)}
-                    className="text-xs px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                    onClick={() => handleActionClick('example', m)}
+                    className="text-[11px] px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer"
                   >
-                    Show an example
+                    🔍 Show example
                   </button>
                   <button
-                    onClick={() => handleActionChip('practice', msg)}
-                    className="text-xs px-2.5 py-1 rounded-md bg-indigo-950/70 border border-indigo-800/60 hover:border-indigo-600 text-indigo-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 font-medium"
+                    onClick={() => handleActionClick('practice', m)}
+                    className="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 font-semibold transition-colors shadow-2xs cursor-pointer"
                   >
-                    <PenTool className="w-3 h-3" /> Practice with me
+                    📝 Practice with me
                   </button>
-                  {msg.citations && msg.citations.length > 0 && (
+                  {m.citations && m.citations.length > 0 && (
                     <button
-                      onClick={() => handleActionChip('show_source', msg)}
-                      className="text-xs px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer flex items-center gap-1"
+                      onClick={() => handleActionClick('source', m)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer"
                     >
-                      <BookOpen className="w-3 h-3" /> Show source
+                      📖 Show source
                     </button>
                   )}
                 </div>
@@ -289,12 +334,12 @@ export const TutorChatPage: React.FC = () => {
         })}
 
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-slate-400 pl-1 font-mono">
-            <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+          <div className="flex items-center gap-2 p-4 bg-white border border-slate-200 rounded-2xl text-xs text-slate-500 shadow-sm max-w-md">
+            <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
             <span>
               {uploadingFile
-                ? 'Uploading & indexing your notes...'
-                : 'Thinking and checking course material...'}
+                ? 'Ingesting attached notes and extracting knowledge chunks...'
+                : 'Retrieving grounded excerpts & formulating explanation...'}
             </span>
           </div>
         )}
@@ -302,29 +347,27 @@ export const TutorChatPage: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Section */}
-      <div className="pt-2 shrink-0 space-y-2">
+      {/* Input Box with Attachment */}
+      <div className="shrink-0 pt-2 pb-1 space-y-2">
         {/* Attached File Preview Chip */}
         {attachedFile && (
-          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-indigo-950/70 border border-indigo-800/80 text-xs text-indigo-200 animate-fadeIn">
+          <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-800 animate-fadeIn">
             <div className="flex items-center gap-2 truncate">
-              <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
-              <span className="font-medium truncate">{attachedFile.name}</span>
-              <span className="text-[11px] text-indigo-400/80 font-mono">
+              <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="font-semibold truncate">{attachedFile.name}</span>
+              <span className="text-[11px] text-indigo-500">
                 ({(attachedFile.size / 1024).toFixed(1)} KB)
               </span>
             </div>
             <button
               onClick={() => setAttachedFile(null)}
-              className="p-1 rounded-md hover:bg-indigo-900/60 text-indigo-300 hover:text-white transition-colors cursor-pointer"
-              title="Remove attached note"
+              className="p-1 text-indigo-400 hover:text-indigo-700 rounded-md cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
-        {/* Input Bar */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -332,16 +375,21 @@ export const TutorChatPage: React.FC = () => {
           }}
           className="relative flex items-center"
         >
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept=".txt,.pdf,.pptx,.ppt,.md,.mp4"
+            className="hidden"
+          />
+
           {/* Paperclip Button */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className={`absolute left-3 p-1.5 rounded-lg transition-colors cursor-pointer ${
-              attachedFile
-                ? 'text-indigo-400 bg-indigo-950/60'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-            }`}
-            title="Attach Notes / PDF / Slides"
+            title="Attach Notes, Slide Deck, or PDF"
+            className="absolute left-2.5 p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer"
           >
             <Paperclip className="w-4 h-4" />
           </button>
@@ -352,26 +400,30 @@ export const TutorChatPage: React.FC = () => {
             onChange={(e) => setInputQuery(e.target.value)}
             placeholder={
               attachedFile
-                ? `Ask any doubt about "${attachedFile.name}"...`
-                : "Ask a doubt or click 📎 to upload notes..."
+                ? `Ask doubt about "${attachedFile.name}"...`
+                : `Ask any question grounded in ${currentCourse.title}...`
             }
-            disabled={loading}
-            className="w-full pl-11 pr-24 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500/80 focus:ring-1 focus:ring-indigo-500/40 transition-all"
+            className="w-full pl-12 pr-24 py-3 rounded-2xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
           />
 
           <button
             type="submit"
-            disabled={loading || (!inputQuery.trim() && !attachedFile)}
-            className="absolute right-2 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            disabled={(!inputQuery.trim() && !attachedFile) || loading}
+            className="absolute right-2 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
-            <span>Ask</span>
+            <span>Send</span>
             <Send className="w-3 h-3" />
           </button>
         </form>
       </div>
 
       {/* Source Viewer Modal */}
-      <SourceViewerModal citation={activeCitation} onClose={() => setActiveCitation(null)} />
+      {activeCitation && (
+        <SourceViewerModal
+          citation={activeCitation}
+          onClose={() => setActiveCitation(null)}
+        />
+      )}
     </div>
   );
 };

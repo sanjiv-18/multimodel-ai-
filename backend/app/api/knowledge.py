@@ -36,9 +36,10 @@ def get_course_topics(
         mastery = db.query(LearnerMastery).filter(
             LearnerMastery.user_id == current_user.id,
             LearnerMastery.course_id == course_id,
-            LearnerMastery.topic == t.name
+            LearnerMastery.topic == t.name,
+            LearnerMastery.total_attempts > 0
         ).first()
-        mastery_val = mastery.mastery_score if mastery else 0.50
+        mastery_val = mastery.mastery_score if mastery else 0.0
 
         results.append(TopicOut(
             id=t.id,

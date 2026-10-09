@@ -1,7 +1,7 @@
 import pytest
 from app.database.session import SessionLocal, init_db_tables
 from app.database.init_db import seed_database
-from app.models.db_models import Course, User
+from app.models.db_models import Course, User, DocumentChunk
 from app.rag.retriever import CourseRetriever
 from app.agents.tutor_agent import GroundedTutorAgent
 
@@ -14,12 +14,13 @@ def db_session():
     db.close()
 
 def test_course_retriever_grounded_query(db_session):
-    course = db_session.query(Course).first()
-    assert course is not None
+    # Find chunk with binary search
+    chunk = db_session.query(DocumentChunk).filter(DocumentChunk.content.ilike("%binary search%")).first()
+    assert chunk is not None, "DSA chunks should be seeded"
 
     retriever = CourseRetriever(db_session)
     chunks, citations, is_supported = retriever.retrieve_grounded_context(
-        course_id=course.id,
+        course_id=chunk.course_id,
         query="What is binary search and its prerequisite?",
         top_k=3
     )
@@ -32,11 +33,12 @@ def test_course_retriever_grounded_query(db_session):
     assert (first_cit.page_number is not None or first_cit.slide_number is not None or first_cit.video_timestamp is not None)
 
 def test_course_retriever_unsupported_query(db_session):
-    course = db_session.query(Course).first()
+    chunk = db_session.query(DocumentChunk).first()
+    assert chunk is not None
     retriever = CourseRetriever(db_session)
     chunks, citations, is_supported = retriever.retrieve_grounded_context(
-        course_id=course.id,
-        query="How do I bake a chocolate cake?",
+        course_id=chunk.course_id,
+        query="How do I bake a chocolate cake with chocolate icing?",
         min_relevance_threshold=0.30
     )
     # Cake baking is not in DSA course material
@@ -44,12 +46,13 @@ def test_course_retriever_unsupported_query(db_session):
 
 def test_tutor_agent_refusal_on_out_of_domain(db_session):
     import asyncio
-    course = db_session.query(Course).first()
+    chunk = db_session.query(DocumentChunk).first()
+    assert chunk is not None
     user = db_session.query(User).first()
     tutor = GroundedTutorAgent(db_session)
 
     res = asyncio.run(tutor.answer_query(
-        course_id=course.id,
+        course_id=chunk.course_id,
         user_id=user.id,
         query="Explain quantum computing qubits and cryogenic entanglement."
     ))

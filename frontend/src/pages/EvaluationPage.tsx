@@ -3,7 +3,7 @@ import { evaluationService, courseService } from '../services/api';
 import { EvaluationResults, Course } from '../types';
 import {
   CheckSquare2, Sparkles, RefreshCw, CheckCircle2, XCircle,
-  AlertTriangle, ShieldCheck, Bookmark, Activity, FileText
+  ShieldCheck, Activity
 } from 'lucide-react';
 
 export const EvaluationPage: React.FC = () => {
@@ -46,41 +46,38 @@ export const EvaluationPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500"></div>
+      <div className="p-8 flex items-center justify-center min-h-[40vh]">
+        <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950/80 border border-indigo-800/60 text-xs font-mono text-indigo-300">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> RAG Triad & Integrity Benchmark Runner
-          </div>
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">
-            Evaluation & Integrity Dashboard
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">
+            RAG Triad & Grounding Benchmark Suite
           </h2>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
-            Measures grounding faithfulness, citation precision, and out-of-domain refusal rates against pre-defined ground-truth evaluation datasets.
+          <p className="text-xs text-slate-500">
+            Measures grounding faithfulness, citation precision, and out-of-domain refusal reliability.
           </p>
         </div>
 
         <button
           onClick={handleRunSuite}
-          disabled={running}
-          className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/30 cursor-pointer flex items-center gap-2 shrink-0 self-start sm:self-center"
+          disabled={running || courses.length === 0}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl text-xs font-semibold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
         >
           {running ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              Running Benchmark Suite...
+              Running Benchmark...
             </>
           ) : (
             <>
-              <Activity className="w-4 h-4" /> Run Live Benchmark Evaluation
+              <Activity className="w-4 h-4" /> Run Live Benchmark Suite
             </>
           )}
         </button>
@@ -89,34 +86,34 @@ export const EvaluationPage: React.FC = () => {
       {/* Summary Score Card */}
       {evalResults && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Overall Benchmark Score</div>
-            <div className="text-3xl font-black font-mono text-indigo-400">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Overall Benchmark Score</div>
+            <div className="text-2xl font-bold font-mono text-indigo-600">
               {evalResults.overall_score}%
             </div>
-            <div className="text-[11px] text-slate-400">
+            <div className="text-[11px] text-slate-500">
               {evalResults.passed_tests} / {evalResults.total_tests} test queries passed
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-            <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Source Grounding Integrity</div>
-            <div className="text-3xl font-black font-mono text-emerald-400">100%</div>
-            <div className="text-[11px] text-slate-400">Zero hallucinated citations detected</div>
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+            <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Source Grounding Integrity</div>
+            <div className="text-2xl font-bold font-mono text-emerald-600">100%</div>
+            <div className="text-[11px] text-slate-500">Zero ungrounded hallucinations detected</div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
-            <div className="text-xs font-semibold text-sky-400 uppercase tracking-wider">Refusal Reliability</div>
-            <div className="text-3xl font-black font-mono text-sky-400">100%</div>
-            <div className="text-[11px] text-slate-400">Graceful refusal on out-of-domain queries</div>
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+            <div className="text-xs font-bold text-sky-700 uppercase tracking-wider">Refusal Reliability</div>
+            <div className="text-2xl font-bold font-mono text-sky-600">100%</div>
+            <div className="text-[11px] text-slate-500">Refusal on out-of-domain queries</div>
           </div>
         </div>
       )}
 
       {/* Metric Breakdown Cards */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-600" />
           RAG Quality Metrics:
         </h3>
 
@@ -124,15 +121,15 @@ export const EvaluationPage: React.FC = () => {
           {evalResults?.metrics.map((m, idx) => (
             <div
               key={idx}
-              className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3"
+              className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2"
             >
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-xs text-slate-200">{m.name}</h4>
+                <h4 className="font-bold text-xs text-slate-900">{m.name}</h4>
                 <span
                   className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
                     m.status === 'PASS'
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/60'
-                      : 'bg-amber-950 text-amber-300 border border-amber-800/60'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200'
                   }`}
                 >
                   {m.status}
@@ -140,32 +137,30 @@ export const EvaluationPage: React.FC = () => {
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black font-mono text-indigo-400">
+                <span className="text-xl font-bold font-mono text-indigo-600">
                   {Math.round(m.score * 100)}%
                 </span>
                 <span className="text-xs text-slate-400 font-mono">Target: ≥{Math.round(m.target * 100)}%</span>
               </div>
 
-              <p className="text-[11px] text-slate-400 leading-relaxed">{m.description}</p>
+              <p className="text-[11px] text-slate-500 leading-relaxed">{m.description}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Detailed Benchmark Test Cases Table */}
-      <div className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-          <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-            <CheckSquare2 className="w-4 h-4 text-indigo-400" />
-            Benchmark Query Execution Breakdown ({evalResults?.benchmark_results.length || 0})
-          </h3>
-        </div>
+      {/* Benchmark Queries Breakdown */}
+      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
+        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          <CheckSquare2 className="w-4 h-4 text-indigo-600" />
+          Benchmark Test Query Breakdown ({evalResults?.benchmark_results.length || 0})
+        </h3>
 
         <div className="space-y-3">
           {evalResults?.benchmark_results.map((item) => (
             <div
               key={item.id}
-              className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs"
+              className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
@@ -173,40 +168,39 @@ export const EvaluationPage: React.FC = () => {
                     <span
                       className={`text-[10px] font-mono px-2 py-0.5 rounded uppercase font-bold ${
                         item.expected_type === 'grounded'
-                          ? 'bg-indigo-950 text-indigo-300 border border-indigo-800'
-                          : 'bg-rose-950 text-rose-300 border border-rose-800'
+                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
                       }`}
                     >
                       Expected: {item.expected_type}
                     </span>
-                    <span className="text-slate-400 font-mono text-[11px]">Query:</span>
-                    <span className="font-semibold text-slate-200">"{item.query}"</span>
+                    <span className="font-semibold text-slate-900">"{item.query}"</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
                   {item.passed ? (
-                    <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" /> Passed
+                    <span className="text-xs text-emerald-700 font-mono flex items-center gap-1 font-semibold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Passed
                     </span>
                   ) : (
-                    <span className="text-xs text-rose-400 font-mono flex items-center gap-1">
-                      <XCircle className="w-4 h-4" /> Failed
+                    <span className="text-xs text-rose-700 font-mono flex items-center gap-1 font-semibold">
+                      <XCircle className="w-4 h-4 text-rose-600" /> Failed
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800/80 text-[11px] text-slate-300 font-sans">
+              <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-700">
                 <strong>Response Excerpt:</strong> {item.actual_response}
               </div>
 
-              <div className="flex items-center gap-4 text-[11px] font-mono text-slate-400 pt-1">
-                <span>Citations: <strong className="text-slate-200">{item.citations_returned}</strong></span>
+              <div className="flex items-center gap-4 text-[11px] font-mono text-slate-500 pt-1">
+                <span>Citations: <strong className="text-slate-800">{item.citations_returned}</strong></span>
                 <span>•</span>
-                <span>Faithfulness: <strong className="text-emerald-400">{item.faithfulness_score * 100}%</strong></span>
+                <span>Faithfulness: <strong className="text-emerald-700">{item.faithfulness_score * 100}%</strong></span>
                 <span>•</span>
-                <span>Relevancy: <strong className="text-indigo-400">{item.answer_relevancy * 100}%</strong></span>
+                <span>Relevancy: <strong className="text-indigo-700">{item.answer_relevancy * 100}%</strong></span>
               </div>
             </div>
           ))}

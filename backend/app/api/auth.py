@@ -11,10 +11,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=Fals
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     if not token:
-        # Default to demo user for friction-free exploration
-        demo_user = db.query(User).filter(User.email == "demo@learnflow.ai").first()
-        if demo_user:
-            return demo_user
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication token required"
@@ -38,7 +34,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 @router.post("/register", response_model=Token)
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == user_in.email).first()
+    clean_email = user_in.email.strip().lower()
+    existing = db.query(User).filter(User.email == clean_email).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -46,9 +43,9 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         )
 
     user = User(
-        email=user_in.email,
+        email=clean_email,
         hashed_password=get_password_hash(user_in.password),
-        full_name=user_in.full_name,
+        full_name=user_in.full_name.strip(),
         role=user_in.role or "student"
     )
     db.add(user)
@@ -64,7 +61,8 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(login_data: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == login_data.email).first()
+    clean_email = login_data.email.strip().lower()
+    user = db.query(User).filter(User.email == clean_email).first()
     if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

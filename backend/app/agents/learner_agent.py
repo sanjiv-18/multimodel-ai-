@@ -8,7 +8,7 @@ class LearnerModelAgent:
     AGENT 7: LEARNER MODEL AGENT
     Tracks granular mastery scores for all course topics and concepts.
     Implements a transparent mastery scoring algorithm with difficulty calibration
-    and mistake penalties.
+    and mistake penalties based strictly on real student attempts.
     """
     def __init__(self, db: Session):
         self.db = db
@@ -26,7 +26,7 @@ class LearnerModelAgent:
                 course_id=course_id,
                 topic=topic_name,
                 concept=topic_name,
-                mastery_score=0.50,  # Prior baseline
+                mastery_score=0.0,  # 0.0 until student attempts questions
                 total_attempts=0,
                 correct_attempts=0,
                 last_updated=datetime.utcnow()
@@ -53,17 +53,22 @@ class LearnerModelAgent:
         elif difficulty == "Hard":
             diff_weight = 1.4
 
-        current_score = record.mastery_score
+        # If this is the first attempt, initialize baseline from first result
+        if record.total_attempts == 0:
+            current_score = 0.50
+        else:
+            current_score = record.mastery_score
+
         record.total_attempts += 1
 
         if is_correct:
             record.correct_attempts += 1
             # Dynamic mastery gain proportional to remaining gap
-            alpha = 0.20 * diff_weight
+            alpha = 0.25 * diff_weight
             new_score = current_score + alpha * (1.0 - current_score)
         else:
             # Mistake penalty proportional to difficulty
-            beta = 0.18 / diff_weight
+            beta = 0.20 / diff_weight
             new_score = current_score - beta * current_score
 
         # Bound strictly between [0.05, 0.99]
@@ -80,8 +85,8 @@ class LearnerModelAgent:
             LearnerMastery.course_id == course_id
         ).all()
 
-        # If no masteries exist yet, initialize defaults from course topics
-        if not masteries:
+        # If no masteries exist yet, initialize unattempted placeholders from course topics
+        if not masteries and course_id:
             topics = self.db.query(Topic).filter(Topic.course_id == course_id).all()
             for t in topics:
                 self.get_or_create_mastery(user_id, course_id, t.name)
@@ -93,29 +98,32 @@ class LearnerModelAgent:
         mastery_items = []
         weak_topics = []
         strong_topics = []
-        total_score = 0.0
+        attempted_scores = []
 
         for m in masteries:
-            total_score += m.mastery_score
-            status = "Developing (40-75%)"
-            if m.mastery_score < 0.40:
-                status = "Weak (<40%)"
-                weak_topics.append(m.topic)
-            elif m.mastery_score >= 0.75:
-                status = "Mastered (>75%)"
-                strong_topics.append(m.topic)
+            status = "Not started"
+            if m.total_attempts > 0:
+                attempted_scores.append(m.mastery_score)
+                if m.mastery_score < 0.40:
+                    status = "Weak (<40%)"
+                    weak_topics.append(m.topic)
+                elif m.mastery_score >= 0.75:
+                    status = "Mastered (>75%)"
+                    strong_topics.append(m.topic)
+                else:
+                    status = "Developing (40-75%)"
 
             mastery_items.append({
                 "topic": m.topic,
                 "concept": m.concept,
-                "mastery_score": m.mastery_score,
+                "mastery_score": m.mastery_score if m.total_attempts > 0 else 0.0,
                 "total_attempts": m.total_attempts,
                 "correct_attempts": m.correct_attempts,
                 "status": status,
                 "last_updated": m.last_updated
             })
 
-        avg_mastery = round(total_score / len(masteries), 3) if masteries else 0.50
+        avg_mastery = round(sum(attempted_scores) / len(attempted_scores), 3) if attempted_scores else 0.0
 
         # Fetch active misconceptions
         active_misconceptions = self.db.query(Misconception).filter(

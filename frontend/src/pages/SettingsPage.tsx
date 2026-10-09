@@ -1,41 +1,34 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { MaterialUploadPage } from './MaterialUploadPage';
 import { KnowledgeMapPage } from './KnowledgeMapPage';
 import { EvaluationPage } from './EvaluationPage';
 import {
-  Settings,
   UploadCloud,
   Network,
-  CheckSquare2,
-  Shield,
-  Layers,
-  Database
+  CheckSquare2
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'materials' | 'knowledge' | 'evaluation'>('materials');
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-6 animate-fadeIn">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800/80">
-        <div>
-          <h1 className="text-xl font-semibold text-white tracking-tight">Advanced & Course Management</h1>
-          <p className="text-xs text-slate-400">
-            Manage course materials, inspect the knowledge graph, and run RAG evaluation benchmarks.
-          </p>
-        </div>
+      <div className="pb-4 border-b border-slate-200">
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Advanced Course Tools & Diagnostics</h1>
+        <p className="text-xs text-slate-500">
+          Multimodal document ingestion, interactive prerequisite graph, and RAG evaluation benchmarks.
+        </p>
       </div>
 
       {/* Sub-Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-800/80 pb-3 text-xs">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 text-xs">
         <button
           onClick={() => setActiveSection('materials')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-semibold transition-all cursor-pointer ${
             activeSection === 'materials'
-              ? 'bg-indigo-600 text-white font-medium shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-2xs'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
           }`}
         >
           <UploadCloud className="w-3.5 h-3.5" />
@@ -44,10 +37,10 @@ export const SettingsPage: React.FC = () => {
 
         <button
           onClick={() => setActiveSection('knowledge')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-semibold transition-all cursor-pointer ${
             activeSection === 'knowledge'
-              ? 'bg-indigo-600 text-white font-medium shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-2xs'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
           }`}
         >
           <Network className="w-3.5 h-3.5" />
@@ -56,10 +49,10 @@ export const SettingsPage: React.FC = () => {
 
         <button
           onClick={() => setActiveSection('evaluation')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-semibold transition-all cursor-pointer ${
             activeSection === 'evaluation'
-              ? 'bg-indigo-600 text-white font-medium shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-2xs'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
           }`}
         >
           <CheckSquare2 className="w-3.5 h-3.5" />
