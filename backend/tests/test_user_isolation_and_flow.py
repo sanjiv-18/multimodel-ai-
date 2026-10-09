@@ -135,6 +135,25 @@ def test_user_data_isolation():
     b_course_ids = [c["id"] for c in b_courses]
     assert alpha_course_id not in b_course_ids
 
+    # User B cannot access Alpha's materials
+    b_mats = client.get(f"/api/courses/{alpha_course_id}/materials", headers=headers_b)
+    assert b_mats.status_code == 403
+
+    # User B cannot access Alpha's topics
+    b_topics = client.get(f"/api/courses/{alpha_course_id}/topics", headers=headers_b)
+    assert b_topics.status_code == 403
+
+    # User B cannot chat in Alpha's course
+    b_chat = client.post(f"/api/courses/{alpha_course_id}/chat", headers=headers_b, json={"message": "What is this?"})
+    assert b_chat.status_code == 403
+
+    # User B cannot generate quiz in Alpha's course
+    b_quiz = client.post(f"/api/courses/{alpha_course_id}/assessments/generate", headers=headers_b, json={
+        "topic": "General", "difficulty": "Easy", "num_questions": 1
+    })
+    assert b_quiz.status_code == 403
+
+
 def test_material_and_course_deletion():
     email = f"deleter_{uuid.uuid4().hex[:8]}@university.edu"
     client.post("/api/auth/register", json={"email": email, "password": "Password123!", "full_name": "Deleter"})

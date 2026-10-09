@@ -21,7 +21,11 @@ async def chat_with_tutor(
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
+    if course.user_id and course.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: This course belongs to another student.")
+
     tutor_agent = GroundedTutorAgent(db)
+
     result = await tutor_agent.answer_query(
         course_id=course_id,
         user_id=current_user.id,

@@ -100,8 +100,15 @@ def list_course_materials(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+    if course.user_id and course.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Course belongs to another student.")
+
     materials = db.query(Material).filter(Material.course_id == course_id).all()
     results = []
+
     for m in materials:
         chunk_count = db.query(DocumentChunk).filter(DocumentChunk.material_id == m.id).count()
         results.append(MaterialOut(

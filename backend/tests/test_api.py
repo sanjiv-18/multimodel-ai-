@@ -53,15 +53,16 @@ def test_get_courses_endpoint(auth_headers):
     assert len(courses) > 0
 
 def test_get_topics_endpoint(auth_headers):
-    db = SessionLocal()
-    dsa_course = db.query(Course).filter(Course.title.ilike("%Algorithms%")).first()
-    course_id = dsa_course.id if dsa_course else client.get("/api/courses", headers=auth_headers).json()[0]["id"]
-    db.close()
+    # Retrieve user's courses
+    courses = client.get("/api/courses", headers=auth_headers).json()
+    assert len(courses) > 0
+    course_id = courses[0]["id"]
     
     response = client.get(f"/api/courses/{course_id}/topics", headers=auth_headers)
     assert response.status_code == 200
     topics = response.json()
     assert isinstance(topics, list)
+
 
 def test_learner_overview_endpoint(auth_headers):
     response = client.get("/api/students/me/overview", headers=auth_headers)

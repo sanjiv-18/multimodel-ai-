@@ -27,7 +27,11 @@ def generate_course_assessment(
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
+    if course.user_id and course.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Cannot generate assessment for another student's course.")
+
     agent = AssessmentGenerationAgent(db)
+
     assessment = agent.generate_assessment(
         course_id=course_id,
         user_id=current_user.id,

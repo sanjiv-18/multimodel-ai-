@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database.session import get_db
-from app.models.db_models import Topic, Concept, LearnerMastery, User
+from app.models.db_models import Topic, Concept, LearnerMastery, User, Course
 from app.schemas.pydantic_schemas import TopicOut, ConceptOut, KnowledgeMapOut
 from app.agents.knowledge_agent import KnowledgeOrganizationAgent
 from app.api.auth import get_current_user
@@ -16,7 +16,14 @@ def get_course_topics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+    if course.user_id and course.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Course belongs to another student.")
+
     topics = db.query(Topic).filter(Topic.course_id == course_id).order_by(Topic.order_index).all()
+
     results = []
     
     for t in topics:
